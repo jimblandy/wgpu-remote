@@ -19,6 +19,7 @@ path = "webidl/main.rs"
 [dependencies]
 hashbrown = "0.15"
 weedle = "0.13"
+peek-poke = "0.2"
 
 [dependencies.serde]
 optional = true

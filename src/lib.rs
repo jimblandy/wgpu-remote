@@ -32,6 +32,8 @@ entirely different machines and communicate over a network.
 mod block;
 mod pool;
 pub mod transport;
+mod buffered_channel;
 
 pub use block::Block;
 pub use pool::Pool;
+pub use buffered_channel::BufferedChannel;
