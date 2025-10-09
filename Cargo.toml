@@ -1,0 +1,37 @@
+[package]
+name = "wgpu-remote"
+edition = "2021"
+rust-version = "1.84"
+keywords = ["graphics"]
+license = "MIT OR Apache-2.0"
+homepage = "https://wgpu.rs/"
+repository = "https://github.com/gfx-rs/wgpu"
+version = "0.1.0"
+authors = ["gfx-rs developers"]
+
+[features]
+default = ["serde"]
+
+[[bin]]
+name = "parse-webidl"
+path = "webidl/main.rs"
+
+[dependencies]
+hashbrown = "0.15"
+weedle = "0.13"
+
+[dependencies.serde]
+optional = true
+version = "1.0"
+features = ["derive"]
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.29", features = ["fs", "mman", "process", "socket", "uio"] }
+
+[[test]]
+name = "unix-send-shmem"
+path = "tests/unix-send-shmem.rs"
+harness = false
+
+[lints.clippy]
+ref_as_ptr = "warn"
