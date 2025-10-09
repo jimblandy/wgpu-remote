@@ -5,7 +5,7 @@ across an inter-process communication channel, so that the actual GPU
 access takes place in a different process from the code driving the
 `wgpu` API. You can use this to isolate GPU access to improve security
 or robustness, or perhaps, in the other direction, to isolate the code
-using wgpu.
+that is using wgpu.
 
 Code using the `wgpu` API with this crate as a backend is considered
 to be the "client", and the code responding to its requests and
