@@ -2,31 +2,28 @@
 
 This module defines the [`Sender`] and [`Receiver`] traits, representing the
 endpoints of a one-way communications channel between a wgpu client and server,
-based on shared memory. A single `Sender` sends messages to a single `Receiver`.
-For two-way communication, each side needs its own `Sender` and `Receiver`. This
-documentation refers to the two sides of a communications channel as
-"counterparts".
+usually based on shared memory.
 
-The [`Sender`] trait abstracts over platform APIs to define a portable but
-low-level interface for communication based on shared memory. All message
-content is stored in shared memory segments; the actual messages conveyed are
-merely references to ranges of segments.
+- The [`Sender`] trait can be implemented using a variety of platform APIs. It
+  serves as a portable but low-level common interface for communication based on
+  shared memory. All message content is stored in shared memory segments; the
+  actual messages conveyed are merely references to ranges of those segments.
 
-The user of [`Sender`] must provide their own [`Receiver`] implementation, to
-serve as a callback or event handler invoked when messages arrive. While other
-channel designs have blocking "receive" methods (like the Rust standard
-library's [`mpsc::Receiver::recv`], for example), having the user provide a
-callback makes [`Sender`] implementations easier to integrate into event loop
-architectures, which generally don't like blocking calls.
+- The user provides their own [`Receiver`] implementation to serve as a
+  callback, invoked when messages arrive or errors occur. This design helps to
+  integrate this module with event loop architectures, which generally don't
+  like blocking "receive" calls like the Rust standard library's
+  [`mpsc::Receiver::recv`].
+
+Each `Sender` sends messages to a single `Receiver`. Two-way communication
+requires two `Sender`/`Receiver` pairs, one going in each direction. This
+documentation refers to a `Sender` and its `Receiver` as "counterparts".
 
 To keep `Sender` easy to implement, `Sender` and `Receiver` are low-level
 interfaces: byte-oriented, unbuffered, and with no enforcement of synchronized
 access to shared memory. However, they should be sufficient for applications to
 build well-typed, thread-safe abstractions that are generic over any `Sender`
-implementation.
-
-The `Sender` trait is meant to be easy to implement in terms of a wide range of
-operating system mechanisms:
+implementation. For example:
 
 - A Unix implementation might use [`AF_UNIX`] address family sockets
   (also known as "Unix domain sockets") to exchange messages. Shared
@@ -42,6 +39,10 @@ operating system mechanisms:
   implementation in which both sides of the connection live in the same process.
   "Shared" memory is simply an ordinary block of memory.
 
+- Within the Firefox web browser, a `Sender` implementation might use [`IPDL`]
+  shared memory and messaging, and use [`nsISerialEventTarget`] to dispatch
+  callbacks.
+
 Exactly how [`Receiver`]s get called when messages arrive is specific to the
 `Sender` implementation:
 
@@ -50,11 +51,6 @@ Exactly how [`Receiver`]s get called when messages arrive is specific to the
 
 - Or, it might register an internal listener with some sort of platform event
   loop, and have that listener call the `Receiver` when appropriate.
-
-While the [`Sender`] trait can be implemented directly in terms of operating
-system facilities, it is also meant to integrate smoothly with existing
-interprocess communication mechanisms and event loops, like Firefox's [`IPDL`]
-and [`nsISerialEventTarget`].
 
 Although these traits are designed for use with `wgpu`, this module attempts to
 fully specify the contract between a transport and its user, independently of
@@ -318,21 +314,22 @@ pub trait Sender {
 /// A dynamically dispatched `Sender`.
 pub type DynSender = dyn Sender + Send + 'static;
 
-/// One side of a two-way communications channel.
+/// The sender and receiver on one side of a two-way communications channel.
 ///
-/// This struct provides a [`Sender`] implementation to send messages to a
+/// This struct holds a [`Sender`] implementation to send messages to a
 /// counterpart, along with a function to register the user's [`Receiver`]
 /// callback for messages received from that counterpart.
 ///
 /// Note: these are *not* the two ends of a one-way communication channel, like
 /// the `(rx, tx)` tuple that [`std::sync::mpsc::channel`] returns. Rather, in a
 /// two-way communication scenario, these are the sender and
-/// callback-registration function for one counterpart. The registered
-/// `Receiver` gets messages sent from the party that `sender` sends to.
+/// callback-registration function for one side. The registered `Receiver` gets
+/// messages sent from the party that `sender` sends to.
 ///
 /// Users that wish to be generic over any [`Sender`] implementation can accept
-/// a value of this type to represent their side of the channel.
-pub struct TransportSide<S> {
+/// a value of this type to represent their side of the channel. If you need to
+/// be able to choose the sender dynamically, you can use `Side<Box<DynSender>>`
+pub struct Side<S> {
     /// A sender.
     pub sender: S,
 

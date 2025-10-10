@@ -8,7 +8,7 @@ use std::ops::Range;
 pub const SMALLEST_ORDER: usize = 4;
 pub const SMALLEST_SIZE: usize = 1 << SMALLEST_ORDER;
 
-/// A map of the free and allocated regions within a [`Block`].
+/// A map of the free and allocated regions within some [`Block`].
 ///
 /// [`Block`]: crate::Block
 pub struct FreeMap {
@@ -19,10 +19,10 @@ pub struct FreeMap {
     /// bytes long.
     ///
     /// The `i`'th element of this vector is a [`SparseBitSet`] holding the
-    /// indices of all free blocks of order `SMALLEST_ORDER + i`, viewing
-    /// `self.block` as an array of blocks of that order (and ignoring all other
-    /// orders). In other words, `j` is a member if the memory at offset `j <<
-    /// (SMALLEST_ORDER + i)` within `self.block` is free.
+    /// indices of all free blocks of order `SMALLEST_ORDER + i`, viewing the
+    /// overall block as an array of sub-blocks of that order (and ignoring all
+    /// other orders). In other words, `j` is a member if the memory at offset
+    /// `j << (SMALLEST_ORDER + i)` within the overall block is free.
     ///
     /// For example, assuming `SMALLEST_ORDER` is 4, `freelists[2]` contains the
     /// indices of all free blocks of order 6, with a size of 64 bytes. If
@@ -94,7 +94,12 @@ impl FreeMap {
         let mut order = requested_order;
 
         let mut allocated_index = loop {
+            // Find the freelist for `order`. If `order` is too large for this
+            // freemap, then allocation has failed. Since we try successively
+            // larger orders when smaller orders are exhausted, this will
+            // eventually occur for an unsatisfiable request of any size.
             let freelist = self.freelists.get_mut(order - SMALLEST_ORDER)?;
+
             // Prefer the last member, to try to get stack-like behavior out of
             // the `SparseBitSet`, rather than favoring insertions and deletions
             // at the front.

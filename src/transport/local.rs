@@ -38,7 +38,7 @@ impl LocalSender {
     /// Return two entangled [`LocalSender`] senders that can exchange
     /// messages with each other.
     ///
-    /// This function returns two [`TransportSide`] values, `(left, right)`, such that:
+    /// This function returns two [`Side`] values, `(left, right)`, such that:
     ///
     /// - A message sent to `left.sender` will be received by the
     ///   [`DynReceiver`] passed to `right.register_callback`.
@@ -50,7 +50,7 @@ impl LocalSender {
     /// messages to be dropped as well.
     ///
     /// [`DynReceiver`]: crate::transport::DynReceiver
-    pub fn new_pair() -> (tp::TransportSide<Self>, tp::TransportSide<Self>) {
+    pub fn new_pair() -> (tp::Side<Self>, tp::Side<Self>) {
         let left_shmem_table = Default::default();
         let right_shmem_table = Default::default();
 
@@ -71,11 +71,11 @@ impl LocalSender {
             event_queue: right_to_left.0,
         };
 
-        let left = tp::TransportSide {
+        let left = tp::Side {
             sender: left_sender,
             register_callback: Box::new(move |receiver| start_receiver_thread(receiver, right_to_left.1, "LocalSender::left")),
         };
-        let right = tp::TransportSide {
+        let right = tp::Side {
             sender: right_sender,
             register_callback: Box::new(move |receiver| start_receiver_thread(receiver, left_to_right.1, "LocalSender::right")),
         };

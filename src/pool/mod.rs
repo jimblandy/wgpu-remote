@@ -16,12 +16,12 @@ There are plenty of heap allocators out there, but this crate has the
 unusual constraint that the memory being managed may be writable by an
 untrusted party. This means that we can't use free space to hold
 memory management metadata like freelists, page headers, and so on.
-All our metadata must live outside the underlying blocks of shared
-memory.
+All the allocator's metadata must live outside the underlying blocks
+of shared memory.
 
 One nice consequence of keeping the metadata separate is that the
-allocator uses only one piece of unsafe code, for constructing the
-sub-`Block` of the larger block we're dicing up. The rest of this
+allocator uses only one piece of unsafe code, when constructing
+sub-blocks of the larger block we're dicing up. The rest of this
 allocator simply operates on ordinary safe Rust types.
 
 [`Sender`]: crate::transport::Sender
@@ -113,16 +113,14 @@ impl Pool {
 
         // Safety:
         //
-        // - `subrange` will live as long as `Block` does:
+        // - `subrange` will live until `block` is dropped: `block` owns the `free`
+        //   closure, which owns a clone of `inner`, which owns `inner.block`, from which
+        //   `subrange` is borrowed.
         //
-        //   - The `free` closure owns a clone of `inner`.
-        //   - Thus, `inner` will live at least until the closure is dropped.
-        //   - Thus, `inner.block` will live until then.
-        //   - Thus, `subrange` will live until then, since it is from `inner.block`.
-        //
-        // - Since this range was previously marked as available in
-        //   `self.freemap`, but is now marked as allocated, nobody else should
-        //   be referring to it.
+        // - Nobody else should be referring to `subrange` until `block` is dropped: this
+        //   module only constructs subranges of `inner.block` as directed by
+        //   `inner.freemap.allocate`, and does not free such subranges until their owning
+        //   blocks are dropped.
         let block = unsafe { Block::new(subrange, free) };
 
         Some(block)

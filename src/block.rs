@@ -35,17 +35,18 @@ unsafe impl Sync for Block {}
 impl Block {
     /// Create a [`Block`] tracking `bytes`.
     ///
-    /// When the returned `Block` is dropped, it will call `free`,
-    /// passing it the pointer to the block's bytes.
+    /// When the returned `Block` is dropped, it will call `free`, passing it
+    /// the pointer to the block's bytes. It will never call `free` under any
+    /// other circumstances.
     ///
     /// # Safety
     ///
-    /// The given `bytes` pointer must be valid for reading and writing the
-    /// entire slice. It must remain so until it is passed to `free` by the new
-    /// `Block`'s [`Drop`] implementation.
+    /// - The given `bytes` pointer must be valid for reading and writing the
+    ///   entire slice. It must remain so until it is passed to `free` by the new
+    ///   `Block`'s [`Drop`] implementation.
     ///
-    /// The given `bytes` must not be accessed through any other pointer until
-    /// after the new `Block` is dropped.
+    /// - The given `bytes` must not be accessed through any other pointer until
+    ///   after the new `Block` is dropped.
     pub unsafe fn new(bytes: *mut [u8], free: impl FnOnce(*mut [u8]) + Send + 'static) -> Block {
         Self {
             bytes,
